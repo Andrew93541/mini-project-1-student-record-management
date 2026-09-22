@@ -1,52 +1,23 @@
-"""
-================================================================================
-Student Record Management System
-MCA Semester I – Python Programming & Relational Database
-
-A robust, humanized console application demonstrating:
-- Core Python 3 Programming (Conditionals, Loops, Functions, Data Structures)
-- Real Relational Database Management using SQLite 3 and parameterized SQL
-- Strict Data Integrity & SQL CHECK Constraints
-- Complete CRUD Operations (Create, Read, Update, Delete)
-- Defensive Input Validation Functions
-- Automatic Academic Grade Evaluation
-- Exception and Error Handling
-- Persistent File I/O Activity Logging
-================================================================================
-"""
-
 import os
 import sqlite3
 from datetime import datetime
 
-# Database and log file configuration
 DB_NAME = "student_records.db"
 LOG_FILE = "activity_log.txt"
 
 
 def connect_database(db_path=DB_NAME):
-    """
-    Establishes and returns a connection to the SQLite relational database.
-    """
     return sqlite3.connect(db_path)
 
 
 def create_database(db_path=DB_NAME):
-    """
-    Connects to the SQLite database and ensures the 'students' table exists
-    with primary key, NOT NULL, and CHECK constraints.
-    If a legacy table exists without CHECK constraints, it safely migrates
-    existing data to the new schema.
-    """
     conn = connect_database(db_path)
     cursor = conn.cursor()
 
-    # Inspect current table schema in sqlite_master
     cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='students'")
     row = cursor.fetchone()
 
     if row is None:
-        # Table does not exist, create it with all constraints
         cursor.execute(
             """
             CREATE TABLE students (
@@ -65,9 +36,7 @@ def create_database(db_path=DB_NAME):
         conn.commit()
     else:
         existing_sql = row[0] or ""
-        # Check if existing schema has the required CHECK constraints
         if "CHECK" not in existing_sql.upper() or "BETWEEN 16 AND 100" not in existing_sql.upper():
-            # Legacy table detected: perform safe data migration
             cursor.execute("SELECT student_id, name, age, course, semester, email, phone, marks, grade FROM students")
             existing_records = cursor.fetchall()
 
@@ -88,7 +57,6 @@ def create_database(db_path=DB_NAME):
                 """
             )
 
-            # Re-insert existing records safely
             for rec in existing_records:
                 try:
                     cursor.execute(
@@ -99,7 +67,7 @@ def create_database(db_path=DB_NAME):
                         rec
                     )
                 except sqlite3.Error:
-                    pass  # Skip corrupt records violating new constraints
+                    pass
 
             conn.commit()
 
@@ -107,15 +75,6 @@ def create_database(db_path=DB_NAME):
 
 
 def calculate_grade(marks):
-    """
-    Automatically calculates letter grade based on marks obtained:
-    90 - 100 : A+
-    80 - 89.9: A
-    70 - 79.9: B
-    60 - 69.9: C
-    50 - 59.9: D
-    Below 50 : F
-    """
     if marks >= 90.0:
         return "A+"
     elif marks >= 80.0:
@@ -131,10 +90,6 @@ def calculate_grade(marks):
 
 
 def log_activity(student_id, action, log_path=LOG_FILE):
-    """
-    Demonstrates Python File I/O.
-    Appends a timestamped log entry to activity_log.txt for write operations.
-    """
     try:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_entry = f"{timestamp} - {action.capitalize()} student {student_id}\n"
@@ -144,23 +99,13 @@ def log_activity(student_id, action, log_path=LOG_FILE):
         print(f"[Warning] Could not write to activity log: {e}")
 
 
-# ==============================================================================
-# STRICT INPUT VALIDATION HELPER FUNCTIONS
-# ==============================================================================
-
 def get_valid_student_id(prompt="Enter Student ID (e.g. STU001): "):
-    """
-    Validates Student ID format:
-    - Must start with 'STU' followed by 3 to 6 numeric digits (e.g. STU001, STU2026).
-    - Cannot be empty, contain spaces, or have special characters.
-    """
     while True:
         raw = input(prompt).strip().upper()
         if not raw:
             print("Error: Student ID cannot be empty.")
             continue
 
-        # Check pattern: STU + 3 to 6 digits
         if raw.startswith("STU") and len(raw) in range(6, 10) and raw[3:].isdigit():
             return raw
 
@@ -168,11 +113,6 @@ def get_valid_student_id(prompt="Enter Student ID (e.g. STU001): "):
 
 
 def get_valid_name(prompt="Enter Student Name: "):
-    """
-    Validates Student Name:
-    - Between 2 and 50 characters.
-    - Contains only letters and spaces (no numbers or special symbols).
-    """
     while True:
         name = input(prompt).strip()
         if not name:
@@ -183,19 +123,13 @@ def get_valid_name(prompt="Enter Student Name: "):
             print("Error: Name must be between 2 and 50 characters long.")
             continue
 
-        # Verify only letters, spaces, and optional dots for initials are present
         if all(c.isalpha() or c.isspace() or c == "." for c in name) and any(c.isalpha() for c in name):
-            # Clean multiple internal spaces into a single space
             return " ".join(name.split())
 
         print("Error: Name must contain only letters, spaces, or dots for initials (no numbers or symbols).")
 
 
 def get_valid_age(prompt="Enter Age (16-100): "):
-    """
-    Validates Student Age:
-    - Integer between 16 and 100.
-    """
     while True:
         raw_input = input(prompt).strip()
         try:
@@ -208,10 +142,6 @@ def get_valid_age(prompt="Enter Age (16-100): "):
 
 
 def get_valid_course(prompt="Enter Course (e.g. MCA, BCA): "):
-    """
-    Validates Course Name:
-    - Non-empty, 2 to 30 characters, letters and spaces only.
-    """
     while True:
         course = input(prompt).strip()
         if not course:
@@ -222,7 +152,6 @@ def get_valid_course(prompt="Enter Course (e.g. MCA, BCA): "):
             print("Error: Course name must be between 2 and 30 characters.")
             continue
 
-        # Check for letters, spaces, dots or hyphens
         valid_chars = all(c.isalnum() or c.isspace() or c in ".-" for c in course)
         has_letters = any(c.isalpha() for c in course)
         if valid_chars and has_letters:
@@ -232,10 +161,6 @@ def get_valid_course(prompt="Enter Course (e.g. MCA, BCA): "):
 
 
 def get_valid_semester(prompt="Enter Semester (1-6): "):
-    """
-    Validates Semester:
-    - Integer between 1 and 6.
-    """
     while True:
         raw_input = input(prompt).strip()
         try:
@@ -248,12 +173,6 @@ def get_valid_semester(prompt="Enter Semester (1-6): "):
 
 
 def get_valid_email(prompt="Enter Email: "):
-    """
-    Validates Email:
-    - Not empty.
-    - Contains exactly one '@'.
-    - Has text before '@' and domain with '.' after '@'.
-    """
     while True:
         email = input(prompt).strip().lower()
         if not email:
@@ -264,7 +183,6 @@ def get_valid_email(prompt="Enter Email: "):
             username, domain = email.split("@")
             if username and domain and "." in domain:
                 domain_parts = domain.split(".")
-                # Check domain parts are not empty (e.g., .com or a.b)
                 if all(part for part in domain_parts) and len(domain_parts[-1]) >= 2:
                     return email
 
@@ -272,11 +190,6 @@ def get_valid_email(prompt="Enter Email: "):
 
 
 def get_valid_phone(prompt="Enter 10-digit Phone Number: "):
-    """
-    Validates Phone Number:
-    - Exactly 10 numeric digits.
-    - Starts with 6, 7, 8, or 9 (Indian mobile format).
-    """
     while True:
         phone = input(prompt).strip()
         if not phone:
@@ -293,10 +206,6 @@ def get_valid_phone(prompt="Enter 10-digit Phone Number: "):
 
 
 def get_valid_marks(prompt="Enter Marks (0-100): "):
-    """
-    Validates Marks:
-    - Float between 0.0 and 100.0.
-    """
     while True:
         raw_input = input(prompt).strip()
         try:
@@ -309,10 +218,6 @@ def get_valid_marks(prompt="Enter Marks (0-100): "):
 
 
 def display_student_card(student):
-    """
-    Displays complete student profile in a formatted ASCII box.
-    Expects a tuple: (student_id, name, age, course, semester, email, phone, marks, grade)
-    """
     student_id, name, age, course, semester, email, phone, marks, grade = student
     print("==================================================")
     print("              STUDENT INFORMATION")
@@ -329,23 +234,13 @@ def display_student_card(student):
     print("==================================================")
 
 
-# ==============================================================================
-# CRUD CONTROLLER FUNCTIONS
-# ==============================================================================
-
 def add_student(conn):
-    """
-    CREATE: Adds a new student record into SQLite.
-    Demonstrates strict input validation, parameterized SQL INSERT,
-    automatic grade calculation, and File I/O audit logging.
-    """
     print("\n==================================================")
     print("                   ADD STUDENT")
     print("==================================================")
 
     student_id = get_valid_student_id("Enter Student ID (e.g. STU001): ")
 
-    # Check if student ID already exists
     cursor = conn.cursor()
     cursor.execute("SELECT student_id FROM students WHERE student_id = ?", (student_id,))
     if cursor.fetchone():
@@ -360,7 +255,6 @@ def add_student(conn):
     phone = get_valid_phone("Enter 10-digit Phone Number: ")
     marks = get_valid_marks("Enter Marks (0-100): ")
 
-    # Calculate grade automatically
     grade = calculate_grade(marks)
 
     try:
@@ -381,10 +275,6 @@ def add_student(conn):
 
 
 def view_students(conn):
-    """
-    READ: Retrieves and displays all student records in an aligned ASCII table.
-    Demonstrates SQL SELECT, loops, and formatted display.
-    """
     print("\n==========================================================================================================")
     print("                                              ALL STUDENTS")
     print("==========================================================================================================")
@@ -418,10 +308,6 @@ def view_students(conn):
 
 
 def search_student(conn):
-    """
-    READ / SEARCH: Searches for student records by ID or Name.
-    Demonstrates SQL parameterized queries and conditional results handling.
-    """
     print("\n==================================================")
     print("                  SEARCH STUDENT")
     print("==================================================")
@@ -433,7 +319,6 @@ def search_student(conn):
 
     cursor = conn.cursor()
 
-    # Search for exact ID match or case-insensitive partial Name match
     cursor.execute(
         """
         SELECT student_id, name, age, course, semester, email, phone, marks, grade
@@ -455,11 +340,6 @@ def search_student(conn):
 
 
 def update_student(conn):
-    """
-    UPDATE: Modifies a specific field of an existing student record.
-    Ensures updated values adhere to strict validation, recalculates
-    grades when marks change, and records modifications in activity_log.txt.
-    """
     print("\n==================================================")
     print("                  UPDATE STUDENT")
     print("==================================================")
@@ -540,10 +420,6 @@ def update_student(conn):
 
 
 def delete_student(conn):
-    """
-    DELETE: Deletes an existing student record after user confirmation.
-    Demonstrates SQL DELETE, confirmation safety, and File I/O logging.
-    """
     print("\n==================================================")
     print("                  DELETE STUDENT")
     print("==================================================")
@@ -580,15 +456,7 @@ def delete_student(conn):
         print("\nDeletion cancelled. Student record retained.")
 
 
-# ==============================================================================
-# MAIN APPLICATION CONTROLLER
-# ==============================================================================
-
 def main():
-    """
-    Main entry point of the application. Initializes database connection
-    and manages the primary menu-driven execution loop.
-    """
     conn = create_database(DB_NAME)
 
     while True:
@@ -624,7 +492,6 @@ def main():
         else:
             print("\nInvalid choice. Please select an option from the menu (1-6).")
 
-    # Close database connection cleanly upon exit
     conn.close()
 
 
